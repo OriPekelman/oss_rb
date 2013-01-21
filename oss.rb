@@ -1,17 +1,26 @@
-require 'net-http-spy'
-require 'open-uri'
-require 'net/http'
 require 'nokogiri'
+require 'rest_client'
 
 class OssIndex
   attr_accessor :documents, :name
 
-  def initialize(name, server = "http://localhost:8080")
+  def initialize(name, host = "http://localhost:8080")
     @name = name
     @documents = []
-    @url = URI(server)
-    @http = Net::HTTP.new(@url.host, @url.port)
-
+    @host ||= host
+  end
+  
+  def list
+    Nokogiri::XML(RestClient.get "#{@host}/schema?cmd=indexlist")
+  end
+  
+  def create!(*template)
+    template ||= @default_template
+    RestClient.get "#{@host}/schema?cmd=createindex&index.name=#{@name}&index.template=#{@default_template}"
+  end
+  
+  def delete!
+    RestClient.get "#{@host}/schema?cmd=deleteindex&index.name=#{@name}&index.delete.name=#{@name}"
   end
   
   def add_document(doc)
@@ -23,15 +32,11 @@ class OssIndex
   end
 
   def index!
-    request = Net::HTTP::Post.new("/update?use=#{@name}")
-    request.body = self.to_xml
-    request["Content-Type"] = "application/xml"
-    response = @http.request(request)
+    RestClient.post "#{@host}/update?use=#{@name}", self.to_xml, {:accept => :xml, :content_type => :xml}
   end
   
   def search(term, lang="en")
-    request = Net::HTTP::Get.new("/select?use=#{@name}&lang=#{lang}&query=#{URI::encode(term)}&qt=test2")
-    response = @http.request(request)
+    RestClient.get "#{@host}/select?use=#{@name}&lang=#{lang}&query=#{URI::encode(term)}&qt=test2"
   end
   
   def to_xml

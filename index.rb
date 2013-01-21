@@ -1,5 +1,12 @@
 require_relative 'oss'
+require 'pry'
+
 index = OssIndex.new("test2")
+
+index.delete!
+index.create!
+binding.pry
+puts index.list
 
 (1..15).each do |i|
   doc = Document.new("en", 1)  
