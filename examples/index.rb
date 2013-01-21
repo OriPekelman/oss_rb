@@ -1,5 +1,4 @@
-require_relative 'oss'
-require 'pry'
+require_relative '../oss'
 
 index = Oss::Index.new("test2")
 
@@ -16,5 +15,5 @@ binding.pry
   index.add_document(doc)
 end
 
-puts index.index!
+index.index!
 puts index.search("j*")
