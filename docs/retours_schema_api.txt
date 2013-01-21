@@ -1,0 +1,21 @@
+Creating an index?:
+POST http://localhost:8080/schema/index1
+id,doc
+
+Maybe if I post a document on a non existing index I should create the Index, if not:
+
+404 Not Found
+{ 
+   message:" The database index1 does not exist yet. You can create it by POST http://localhost:8080/schema/index1"
+}
+
+http://localhost:8080/schema?cmd=createindex&index.name=index1&index.template=WEB_CRAWLER
+ 
+List all the available index:
+http://localhost:8080/schema?cmd=indexlist
+ 
+Deleting an index :
+http://localhost:8080/schema?cmd=deleteindex&index.name=index1&index.delete.name=index1
+ 
+Setting/Creating a schema field:
+http://localhost:8080/oss1.3/schema?cmd=setField&field.name=titleNew&field.analyzer=StandardAnalyzer&use=index1&field.stored=YES&field.indexed=YES&term.termVector=NO

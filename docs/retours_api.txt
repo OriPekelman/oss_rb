@@ -1,0 +1,11 @@
+curl -X PUT "http://localhost:8080/indexname.json" -d
+{                                                                                                                         \n
+  docs: [                                                                                                                 \n
+  id:1,                                                                                                                   \n
+  title: "Open Search Server",                                                                                            \n
+  url: "http://www.open-search-server.com",                                                                               \n
+  users : ["emmanuel_keller","philcube"]                                                                                  \n
+  ]                                                                                                                       \n
+  }
+  
+curl "http://localhost:8080/indexname?q=ma%20requête"

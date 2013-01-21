@@ -1,45 +1,37 @@
+require 'net-http-spy'
+require 'open-uri'
 require 'net/http'
 require 'nokogiri'
-require 'pry'
-#<?xml version="1.0" encoding="UTF-8"?>
-#<index>
-#  <document lang="en">
-#    <field name="id"><value>1</value></field>
-#    <field name="title"><value>Open Search Server</value></field>
-#    <field name="url"><value>http://www.open-search-server.com</value></field>
-#    <field name="user">
-#      <value>emmanuel_keller</value>
-#      <value>philcube</value>
-#    </field>
-#  </document>
-#  <document lang="en">
-#    <field name="id"><value>2</value></field>
-#    <field name="title"><value>SaaS services | OpenSearchServer</value></field>
-#    <field name="url"><value>http://www.open-search-server.com/services/saas_services</value></field>
-#    <field name="user">
-#      <value>emmanuel_keller</value>
-#    </field>
-#  </document>
-#</index>
 
 class OssIndex
   attr_accessor :documents, :name
 
   def initialize(name, server = "http://localhost:8080")
     @name = name
-    @server= server
     @documents = []
+    @url = URI(server)
+    @http = Net::HTTP.new(@url.host, @url.port)
 
   end
   
   def add_document(doc)
-    @documents << doc
+    if doc.is_a?(Array) then 
+      @documents = doc
+    else
+      @documents << doc
+    end
   end
 
   def index!
-    uri = URI("#{@server}/update/?use={@name}")
-    res = Net::HTTP.post_form(uri,self.to_xml)
-    puts res
+    request = Net::HTTP::Post.new("/update?use=#{@name}")
+    request.body = self.to_xml
+    request["Content-Type"] = "application/xml"
+    response = @http.request(request)
+  end
+  
+  def search(term, lang="en")
+    request = Net::HTTP::Get.new("/select?use=#{@name}&lang=#{lang}&query=#{URI::encode(term)}&qt=test2")
+    response = @http.request(request)
   end
   
   def to_xml
@@ -65,26 +57,20 @@ class OssIndex
 end
 
 class Document
-  attr_accessor :lang, :fields
-  def initialize(lang ="en")
+  attr_accessor :lang, :fields, :id
+  def initialize(lang ="en", id)
     @lang = lang
     @fields = {}
+    self.add_field("id", id)
   end
+  
   def add_field(name, value)
     if value.is_a?(Array) then 
       @fields[name] = value
     else
       @fields[name] ||=[]
       @fields[name] <<  value
-  end
+    end
+
   end
 end
-
-i = OssIndex.new("test")
-d = Document.new("en")
-d.add_field("user", "john")
-d.add_field("user", "jane")
-i.add_document(d)
-i.add_document(d)
-binding.pry
-puts i.to_xml
