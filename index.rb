@@ -6,6 +6,7 @@ index = Oss::Index.new("test2")
 index.delete!
 index.create!
 puts index.list
+binding.pry
 
 (1..15).each do |i|
   doc = Oss::Document.new("en", 1)  

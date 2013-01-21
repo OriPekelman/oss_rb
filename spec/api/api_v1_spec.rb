@@ -22,7 +22,7 @@ describe Oss::Index do
   describe '#create index' do
     it "create index" do
       indexes = @index.create!
-      @index.list[@name].should_not_be_nil
+      @index.list.include?@name.should == @name
     end
   end
   
@@ -38,7 +38,7 @@ describe Oss::Index do
         @index.add_document(doc)
       end
       @index.index!
-      @index.search("j*").length.should == 
+      @index.search("j*").length.should == 10
     end
   end
 
