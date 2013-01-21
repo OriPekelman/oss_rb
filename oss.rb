@@ -39,7 +39,11 @@ module Oss
     end
     
     def search(term, lang="en")
-      RestClient.get "#{@host}/select?use=#{@name}&lang=#{lang}&query=#{URI::encode(term)}"
+      response = Nokogiri::XML(RestClient.get "#{@host}/select?use=#{@name}&lang=#{lang}&query=#{URI::encode(term)}")
+      response.css('result doc').map{|i|{
+        :id=>i.children.css("field")[0].children[0].to_s,
+        :score=>i.attributes["score"].value,
+        }}      
     end
     
     def to_xml

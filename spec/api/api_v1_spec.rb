@@ -25,7 +25,21 @@ describe Oss::Index do
       @index.list[@name].should_not_be_nil
     end
   end
-
+  
+  describe '#index docs' do
+    it "create index, index docs" do
+      indexes = @index.delete!
+      indexes = @index.create!
+      (1..15).each do |i|
+        doc = Oss::Document.new("en", 1)  
+        doc.add_field("user", "jane#{i}")
+        doc.add_field("user", "john#{i}")
+        doc.add_field("url", "john#{i}")
+        @index.add_document(doc)
+      end
+      @index.index!
+      @index.search("j*").length.should == 
+    end
+  end
 
 end
-

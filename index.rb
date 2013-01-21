@@ -16,5 +16,4 @@ puts index.list
 end
 
 puts index.index!
-binding.pry
-puts index.search("j*").body
+puts index.search("j*")
