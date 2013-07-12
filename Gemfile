@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
-gem 'nokogiri'
-gem 'rest-client'
 
+# Specify your gem's dependencies in oss_rb.gemspec
+gemspec
 
 group :development do
   gem "rake"
@@ -10,7 +10,6 @@ group :development do
   gem "guard-bundler"
   gem "guard-rack"
   gem 'pry'
-  gem 'puma'
   gem 'net-http-spy'
 end
 

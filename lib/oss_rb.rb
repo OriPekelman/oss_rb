@@ -1,6 +1,6 @@
 require 'nokogiri'
 require 'rest_client'
-require_relative './vendor/nokogiri_to_hash'
+require_relative '../vendor/nokogiri_to_hash'
 module Oss
   class Index
     attr_accessor :documents, :name

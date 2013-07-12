@@ -1,6 +1,5 @@
-require_relative '../oss'
+require_relative '../lib/oss_rb'
 require 'securerandom'
-require 'pry'
 index = Oss::Index.new("test2")
 
 index.delete!
