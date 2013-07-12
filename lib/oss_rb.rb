@@ -1,16 +1,18 @@
 require 'nokogiri'
 require 'rest_client'
+
 require_relative '../vendor/nokogiri_to_hash'
 
 module Oss
   class Index
-    attr_accessor :documents, :name
+    attr_accessor :documents, :name, :search_result
     def initialize(name, host = 'http://localhost:8080/oss-1.5', login = nil, key = nil)
       @name = name
       @documents = []
       @host ||= host
       @login = login
       @key = key
+      @search_result
     end
 
     def list
@@ -84,19 +86,16 @@ module Oss
       RestClient.post "#{@host}/update", self.to_xml, {:params => params, :accept => :xml, :content_type => :xml}
     end
 
-    def search(term, lang = 'en', returned_field = nil)
+    def search(term, lang = 'en')
       params = {
         'login' => @login,
         'key' => @key,
         'use' => @name,
         'lang' => lang,
         'q' => URI::encode(term),
-        'rf' => returned_field
       }
-      response = Nokogiri::XML(RestClient.get("#{@host}/select", {:params => params}))
-      response.css('result doc').map{|i|{
-          :score => i.attributes["score"].value,
-        }}
+      puts params
+      @search_result = Nokogiri::XML(RestClient.get("#{@host}/select", {:params => params}))
     end
 
     def to_xml
