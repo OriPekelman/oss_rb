@@ -6,13 +6,10 @@ require_relative '../vendor/nokogiri_to_hash'
 module Oss
   class Index
     attr_accessor :documents, :name, :search_result
-    def initialize(name, host = 'http://localhost:8080', login = nil, key = nil)
+    def initialize(name, host = 'http://localhost:8080/oss-1.5', login = nil, key = nil)
       @name = name
       @documents = []
       @host ||= host
-      @login = login
-      @key = key
-      @search_result
       @credentials = {:login=>login,:key=>key}
     end
 
@@ -105,8 +102,8 @@ module Oss
     def search(query,  params = nil)
       # The query string is build manually to handle multiple value with the same key
       querystring = 'use=' + URI::encode(@name)
-      querystring += Index.singlekey_querystring('login', @login)
-      querystring += Index.singlekey_querystring('key', @key)
+      querystring += Index.singlekey_querystring('login', @credentials[:login])
+      querystring += Index.singlekey_querystring('key', @credentials[:key])
       querystring += Index.singlekey_querystring('query', query)
       # Evaluating the parameters given in the hash
       if (params != nil) then
@@ -122,11 +119,13 @@ module Oss
         querystring += Index.multikey_querystring('facet.multi', params['facet_multi'])
       end
       puts querystring
-      @search_result = Nokogiri::XML(RestClient.get("#{@host}/select?#{querystring}"))
-      err = @search_result.at_xpath('.//entry')
+      xml = Nokogiri::XML(RestClient.get("#{@host}/select?#{querystring}"))
+      err = xml.at_xpath('.//entry')
       if !err.nil? && err.to_str=="Error"
         puts response
         raise "API reported Error"
+      else
+        return xml
       end
     end
 
