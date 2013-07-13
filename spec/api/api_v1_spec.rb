@@ -6,7 +6,7 @@ require "yaml"
 describe Oss::Index do
   before(:all) do
     @index_name = "test_oss_rb"
-    @index = Oss::Index.new(@index_name)
+    @index = Oss::Index.new(@index_name, ENV['OSS_RB_URL'], ENV['OSS_RB_LOGIN'], ENV['OSS_RB_KEY'])
   end
 
   describe '#OssIndex(name)' do

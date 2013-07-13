@@ -6,7 +6,7 @@ require_relative '../vendor/nokogiri_to_hash'
 module Oss
   class Index
     attr_accessor :documents, :name, :search_result
-    def initialize(name, host = 'http://localhost:8080/oss-1.5', login = nil, key = nil)
+    def initialize(name, host = 'http://localhost:8080', login = nil, key = nil)
       @name = name
       @documents = []
       @host ||= host
@@ -14,7 +14,7 @@ module Oss
     end
 
     def list
-      response = Nokogiri::XML(api_get "#{@host}/schema", {:cmd => 'indexlist'} )
+      response = Nokogiri::XML(api_get("#{@host}/schema", {:cmd => 'indexlist'}))
       response.css('index').map{|i|i.attributes['name'].value}
     end
 
@@ -118,7 +118,6 @@ module Oss
         querystring += Index.multikey_querystring('facet', params['facet'])
         querystring += Index.multikey_querystring('facet.multi', params['facet_multi'])
       end
-      puts querystring
       xml = Nokogiri::XML(RestClient.get("#{@host}/select?#{querystring}"))
       err = xml.at_xpath('.//entry')
       if !err.nil? && err.to_str=="Error"
