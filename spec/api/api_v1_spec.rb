@@ -56,7 +56,12 @@ describe Oss::Index do
         @index.add_document(doc)
       end
       @index.index!
-      xml = @index.search('j*');
+      params = {
+        'start' => 0,
+        'rows' => 10,
+        'returned_field' => ['id', 'user']
+      }
+      xml = @index.search('j*', params);
       docs = xml.css('result doc')
       puts docs
       docs.length.should == 10
