@@ -1,4 +1,5 @@
 require 'pry'
+
 require_relative "../spec_helper"
 require "yaml"
 
@@ -51,7 +52,15 @@ describe Oss::Index do
         @index.add_document(doc)
       end
       @index.index!
-      @index.search('j*', 'id').length.should == 10
+      params = {
+        'start' => 0,
+        'rows' => 10,
+        'returned_field' => ['id', 'user']
+      }
+      xml = @index.search('j*', params);
+      docs = xml.css('result doc')
+      puts docs
+      docs.length.should == 10
     end
   end
 
@@ -63,7 +72,7 @@ describe Oss::Index do
     end
   end
 
-    describe '#delete index' do
+  describe '#delete index' do
     it 'create index, delete index' do
       @index.delete!
       #FIXME no test here...
