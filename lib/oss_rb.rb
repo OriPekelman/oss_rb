@@ -6,47 +6,42 @@ require_relative '../vendor/nokogiri_to_hash'
 module Oss
   class Index
     attr_accessor :documents, :name, :search_result
-    def initialize(name, host = 'http://localhost:8080/oss-1.5', login = nil, key = nil)
+    def initialize(name, host = 'http://localhost:8080', login = nil, key = nil)
       @name = name
       @documents = []
       @host ||= host
       @login = login
       @key = key
       @search_result
+      @credentials = {:login=>login,:key=>key}
     end
 
     def list
-      response = Nokogiri::XML(RestClient.get("#{@host}/schema", {:params => { :cmd => 'indexlist' }}))
+      response = Nokogiri::XML(api_get "#{@host}/schema", {:cmd => 'indexlist'} )
       response.css('index').map{|i|i.attributes['name'].value}
     end
 
     def create(template = 'WEB_CRAWLER')
       params = {
         'cmd' => 'createindex',
-        'login' => @login,
-        'key' => @key,
-        'index.name' => @name,
+        'index.name' => @index_name,
         'index.template' => template
       }
-      RestClient.get "#{@host}/schema", {:params => params}
+      api_get "#{@host}/schema", params
     end
 
     def delete!
       params = {
         'cmd' => 'deleteindex',
-        'login' => @login,
-        'key' => @key,
-        'index.name' => @name
+        'index.name' => @index_name
       }
-      RestClient.get "#{@host}/schema",  {:params => params}
+      api_get "#{@host}/schema", params
     end
 
     def set_field(default = false, unique = false, name = nil, analyzer = nil, stored = true, indexed = true, termVector = nil)
       params = {
         'cmd' => 'setfield',
-        'login' => @login,
-        'key' => @key,
-        'use' => @name,
+        'use' => @index_name,
         'field.default' => default ? 'yes' : 'no',
         'field.unique' => unique ? 'yes' : 'no',
         'field.name' => name,
@@ -55,18 +50,16 @@ module Oss
         'field.indexed' => indexed ? 'yes' : 'no' ,
         'field.termVector' => termVector
       }
-      RestClient.get "#{@host}/schema", {:params => params}
+      api_get "#{@host}/schema", params
     end
 
     def delete_field(name = nil)
       params = {
         'cmd' => 'deletefield',
-        'login' => @login,
-        'key' => @key,
-        'use' => @name,
+        'use' => @index_name,
         'field.name' => name,
       }
-      RestClient.get "#{@host}/schema", {:params => params}
+      api_get "#{@host}/schema", params
     end
 
     def add_document(doc)
@@ -79,11 +72,9 @@ module Oss
 
     def index!
       params = {
-        'login' => @login,
-        'key' => @key,
-        'use' => @name
+        'use' => @index_name
       }
-      RestClient.post "#{@host}/update", self.to_xml, {:params => params, :accept => :xml, :content_type => :xml}
+      api_post "#{@host}/update", self.to_xml, params
     end
 
     # Populate the query string with values in an hash.
@@ -132,6 +123,11 @@ module Oss
       end
       puts querystring
       @search_result = Nokogiri::XML(RestClient.get("#{@host}/select?#{querystring}"))
+      err = @search_result.at_xpath('.//entry')
+      if !err.nil? && err.to_str=="Error"
+        puts response
+        raise "API reported Error"
+      end
     end
 
     def to_xml
@@ -151,6 +147,16 @@ module Oss
         }
       end
       builder.to_xml
+    end
+
+    private
+
+    def api_get (method, params)
+      RestClient.get(method, {:params => params.merge(@credentials)})
+    end
+
+    def api_post (method, body, params)
+      RestClient.get(method, {:accept => :xml, :content_type => :xml, :params => params.merge(@credentials)})
     end
 
   end
