@@ -1,13 +1,13 @@
 require 'nokogiri'
 require 'rest_client'
+
 require_relative '../vendor/nokogiri_to_hash'
 
 module Oss
   class Index
-    attr_accessor :documents, :name
-
-    def initialize(name, host = 'http://localhost:8080', login = nil, key = nil)
-      @index_name = name
+    attr_accessor :documents, :name, :search_result
+    def initialize(name, host = 'http://localhost:8080/oss-1.5', login = nil, key = nil)
+      @name = name
       @documents = []
       @host ||= host
       @credentials = {:login=>login,:key=>key}
@@ -74,26 +74,58 @@ module Oss
       api_post "#{@host}/update", self.to_xml, params
     end
 
-    def search(term, lang = 'en', returned_field = nil)
-      params = {
-        'use' => @index_name,
-        'lang' => lang,
-        'query' => URI::encode(term),
-        # 'qt'=>"template_1"
-        #FIXME template is required?
-      }
-      
-      params.merge!({'rf' => returned_field}) unless returned_field.nil?
-      
-      response = Nokogiri::XML(api_get "#{@host}/select", params )
-      err = response.at_xpath('.//entry') 
+    # Populate the query string with values in an hash.
+    # Array of value is added as multiple key/value
+    def self.multikey_querystring(qs_key, value)
+      parm = ''
+      if value != nil then
+        if value.is_a?Array then
+          value.each do |v|
+            parm += '&' + qs_key + '=' + URI::encode(v.to_s)
+          end
+        else
+          parm += '&' + qs_key + '=' + URI::encode(value.to_s)
+        end
+      end
+      return parm
+    end
+
+    # Populate the query string with a non nil value
+    def self.singlekey_querystring(qs_key, value)
+      parm = ''
+      if value != nil then
+        parm += '&' + qs_key + '=' + URI::encode(value.to_s)
+      end
+      return parm
+    end
+
+    def search(query,  params = nil)
+      # The query string is build manually to handle multiple value with the same key
+      querystring = 'use=' + URI::encode(@name)
+      querystring += Index.singlekey_querystring('login', @credentials[:login])
+      querystring += Index.singlekey_querystring('key', @credentials[:key])
+      querystring += Index.singlekey_querystring('query', query)
+      # Evaluating the parameters given in the hash
+      if (params != nil) then
+        querystring += Index.multikey_querystring('qt', params['query_template'])
+        querystring += Index.multikey_querystring('start', params['start'])
+        querystring += Index.multikey_querystring('rows', params['rows'])
+        querystring += Index.multikey_querystring('lang', params['lang'])
+        querystring += Index.multikey_querystring('rf', params['returned_field'])
+        querystring += Index.multikey_querystring('fq', params['filter_query'])
+        querystring += Index.multikey_querystring('fqn', params['filter_negative_query'])
+        querystring += Index.multikey_querystring('sort', params['sort'])
+        querystring += Index.multikey_querystring('facet', params['facet'])
+        querystring += Index.multikey_querystring('facet.multi', params['facet_multi'])
+      end
+      puts querystring
+      xml = Nokogiri::XML(RestClient.get("#{@host}/select?#{querystring}"))
+      err = xml.at_xpath('.//entry')
       if !err.nil? && err.to_str=="Error"
         puts response
         raise "API reported Error"
       else
-      response.css('result doc').map{|i|{
-          :score => i.attributes["score"].value,
-        }}
+        return xml
       end
     end
 
@@ -115,17 +147,17 @@ module Oss
       end
       builder.to_xml
     end
-    
+
     private
-    
+
     def api_get (method, params)
       RestClient.get(method, {:params => params.merge(@credentials)})
     end
-    
+
     def api_post (method, body, params)
       RestClient.get(method, {:accept => :xml, :content_type => :xml, :params => params.merge(@credentials)})
     end
-    
+
   end
 
   class Document
