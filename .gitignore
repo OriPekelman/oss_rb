@@ -12,6 +12,13 @@ test/tmp
 test/version_tmp
 tmp
 
+# Mac
+.DS_Store
+
+# Eclipse project
+.buildpath
+.project
+
 # YARD artifacts
 .yardoc
 _yardoc
