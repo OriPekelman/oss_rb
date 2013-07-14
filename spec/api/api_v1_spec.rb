@@ -35,15 +35,18 @@ describe Oss::Index do
 
   describe '#delete index' do
     it "delete index" do
-      indexes = @index.delete!
-      @index.list.include? @index_name.should == @index_name
+      index = Oss::Index.new("DELETE_ME", ENV['OSS_RB_URL'], ENV['OSS_RB_LOGIN'], ENV['OSS_RB_KEY'])
+      index.create('EMPTY_INDEX')
+      index.list.should include "DELETE_ME"
+      index.delete!
+      index.list.should_not include "DELETE_ME"
     end
   end
 
   describe '#create index' do
     it "create index" do
-      indexes = @index.create('EMPTY_INDEX')
-      @index.list.include? @index_name.should == @index_name
+      @index.create('EMPTY_INDEX') unless @index.list.include? @index_name
+      @index.list.should include @index_name
     end
   end
 
@@ -72,11 +75,10 @@ describe Oss::Index do
       params = {
         'start' => 0,
         'rows' => 10,
-        'returned_field' => ['id', 'user']
+        'rf' => ['id', 'user']
       }
       xml = @index.search('j*', params);
       docs = xml.css('result doc')
-      puts docs
       docs.length.should == 10
     end
   end

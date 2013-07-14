@@ -92,27 +92,11 @@ module Oss
       response = api_post "update", self.to_xml, params
       xml = check_response_xml response
     end
+    
 
     def search(query,  params = nil)
-      # The query string is build manually to handle multiple value with the same key
-      querystring = 'use=' + URI::encode(@name)
-      querystring += Index.singlekey_querystring('login', @credentials[:login])
-      querystring += Index.singlekey_querystring('key', @credentials[:key])
-      querystring += Index.singlekey_querystring('query', query)
-      # Evaluating the parameters given in the hash
-      if !params.nil?
-        querystring += Index.multikey_querystring('qt', params['query_template'])
-        querystring += Index.multikey_querystring('start', params['start'])
-        querystring += Index.multikey_querystring('rows', params['rows'])
-        querystring += Index.multikey_querystring('lang', params['lang'])
-        querystring += Index.multikey_querystring('rf', params['returned_field'])
-        querystring += Index.multikey_querystring('fq', params['filter_query'])
-        querystring += Index.multikey_querystring('fqn', params['filter_negative_query'])
-        querystring += Index.multikey_querystring('sort', params['sort'])
-        querystring += Index.multikey_querystring('facet', params['facet'])
-        querystring += Index.multikey_querystring('facet.multi', params['facet_multi'])
-      end
-      response = api_get "select?#{querystring}"
+      query_string = flatten_params({:query=>query}.merge(params)).map{|k,v|"#{k}=#{v}"}.join "&" 
+      api_get "select?use=#{URI::encode(@name)}&#{query_string}"
     end
 
     def to_xml
@@ -137,45 +121,36 @@ module Oss
     private
 
     def api_get (method, params={})
-      check_response_xml RestClient.get("#{@host}/#{method}", {:params => params.merge(@credentials)})
+      params.merge!(@credentials) unless method.start_with? "select" #FIXME grbbl 
+      check_response_xml RestClient.get("#{@host}/#{method}", {:params => params})
     end
 
     def api_post (method, body, params={})
      check_response_xml RestClient.post("#{@host}/#{method}", self.to_xml, {:accept => :xml, :content_type => :xml, :params => params.merge(@credentials)})
     end
     
-    # Populate the query string with values in an hash.
-    # Array of value is added as multiple key/value
-    def self.multikey_querystring(qs_key, value)
-      parm = ''
-      if value != nil then
-        if value.is_a?Array then
-          value.each do |v|
-            parm += '&' + qs_key + '=' + URI::encode(v.to_s)
+    def flatten_params(params)
+      params_ary=[]
+      params.each do |k,v| 
+        if v.kind_of?(Array)
+          v.each do |vv| 
+            params_ary << [k,vv]
           end
         else
-          parm += '&' + qs_key + '=' + URI::encode(value.to_s)
+          params_ary << [k,v]        
         end
       end
-      return parm
+      params_ary
     end
 
-    # Populate the query string with a non nil value
-    def self.singlekey_querystring(qs_key, value)
-      parm = ''
-      if value != nil then
-        parm += '&' + qs_key + '=' + URI::encode(value.to_s)
-      end
-      return parm
-    end
-    
+
     def check_response_xml(response)
       xml = Nokogiri::XML(response)
-      
+
       if xml.nil?
         raise Oss::ApiException.new "Failed to parse response as XML\n#{response}"
       end
-      
+
       status = xml.at_xpath('/response/entry[@key=\'Status\']')
 
       if status.nil? #FIXME Not all api calls return status
@@ -194,9 +169,9 @@ module Oss
   end
 
   class Document
-    
+
     attr_accessor :lang, :fields
-    
+
     def initialize(lang ='en')
       @lang = lang
       @fields = {}
@@ -210,7 +185,7 @@ module Oss
         @fields[name] <<  value
       end
     end
-    
+
   end
 
 
@@ -220,7 +195,6 @@ module Oss
     
     def initialize(reason)
        @reason = reason
-       $stderr.puts reason
     end
     
   end
