@@ -15,6 +15,18 @@ describe Oss::Index do
     end
   end
 
+  describe '#Non existing methods' do
+    it "should not work" do
+      expect {@index.send(:api_get,"plop")}.to raise_error
+    end
+  end
+  
+  describe '#illegal url' do
+    it "should not work" do  
+      expect {@index.send(:api_get,"schema?cmd=setField&field.analyzer=StandardAnalyzer")}.to raise_error
+    end
+  end
+
   describe '#OssIndex' do
     it "fetches the OssIndex client object" do
       @index.should be_an_instance_of(Oss::Index)
