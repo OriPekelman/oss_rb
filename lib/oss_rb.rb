@@ -186,7 +186,7 @@ module Oss
 
       if status != "OK"
         exception = xml.at_xpath('/response/entry[@key=\'Exception\']/text()') || response
-        raise Oss::ApiException.new "API Request failed\nStatus: #{status.text}\n#{exception}"
+        raise Oss::ApiException.new "API Request failed\nStatus: #{status}\n#{exception}"
       end
       return xml
     end
