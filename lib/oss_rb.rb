@@ -9,7 +9,7 @@ module Oss
     def initialize(name, host = 'http://localhost:8080', login = nil, key = nil)
       @name = name
       @documents = []
-      @host ||= host
+      @host = host
       @credentials = {:login=>login,:key=>key}
     end
 
