@@ -6,7 +6,7 @@ require "yaml"
 describe Oss::Index do
   before(:all) do
     @index_name = "test_oss_rb"
-    @index = Oss::Index.new(@index_name)
+    @index = Oss::Index.new(@index_name, ENV['OSS_RB_URL'], ENV['OSS_RB_LOGIN'], ENV['OSS_RB_KEY'])
   end
 
   describe '#OssIndex(name)' do
@@ -39,7 +39,6 @@ describe Oss::Index do
     it 'set fields' do
       @index.set_field(false, true, 'id', nil, true, true, nil)
       @index.set_field(true, false, 'user', 'StandardAnalyzer', true, true, nil)
-      #FIXME no test here... but this is because there seems to be not API method to get the fields
     end
   end
 
@@ -68,14 +67,21 @@ describe Oss::Index do
     it 'set fields, delete fields' do
       @index.delete_field('id')
       @index.delete_field('user')
-      #FIXME no test here...
     end
   end
 
-  describe '#delete index' do
-    it 'create index, delete index' do
-      @index.delete!
-      #FIXME no test here...
+  describe '#delete document by key' do
+    it 'index docs, delete document by key' do
+      @index.delete_document_by_key(1)
+      @index.delete_document_by_key(2)
+      @index.delete_document_by_key(3)
+    end
+
+    describe '#delete document by query' do
+      it 'index docs, delete document by query' do
+        @index.delete_documents_by_query('user:john4')
+        @index.delete_documents_by_query('user:john5')
+      end
     end
   end
 
