@@ -45,17 +45,28 @@ describe Oss::Index do
 
   describe '#create index' do
     it "create index" do
-      @index.create('EMPTY_INDEX') unless @index.list.include? @index_name
-      @index.list.should include @index_name
+      indexes = @index.create('WEB_CRAWLER')
+      @index.list.include? @index_name.should == @index_name
     end
   end
 
   describe '#set fields' do
     it 'set fields' do
-      @index.set_field(false, true, 'id', nil, true, true, nil)
-      @index.set_field(true, false, 'user', 'StandardAnalyzer', true, true, nil)
-      #FIXME nothing is tested here
-      #FIXME how do you get the list of fields from the schema?
+      params = {
+        'unique' => true,
+        'name' => 'id',
+        'stored' => true,
+        'indexed' => true
+      }
+      @index.set_field(params)
+      params = {
+        'default' => true,
+        'name' => 'user',
+        'analyzer' => 'StandardAnalyzer',
+        'stored' => true,
+        'indexed' => true
+      }
+      @index.set_field(params)
     end
   end
 
@@ -73,11 +84,12 @@ describe Oss::Index do
       
       @index.index!
       params = {
+        'query_template' => 'search',
         'start' => 0,
         'rows' => 10,
         'rf' => ['id', 'user']
       }
-      xml = @index.search('j*', params);
+      xml = @index.search('user:j*', params);
       docs = xml.css('result doc')
       docs.length.should == 10
     end
@@ -85,8 +97,8 @@ describe Oss::Index do
 
   describe '#delete fields' do
     it 'set fields, delete fields' do
-      @index.delete_field('id')
-      @index.delete_field('user')
+      @index.delete_field('host')
+      @index.delete_field('subhost')
     end
   end
 

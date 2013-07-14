@@ -5,7 +5,7 @@ require_relative '../vendor/nokogiri_to_hash'
 
 module Oss
   class Index
-    attr_accessor :documents, :name, :search_result
+    attr_accessor :documents, :name
     def initialize(name, host = 'http://localhost:8080', login = nil, key = nil)
       @name = name
       @documents = []
@@ -35,17 +35,17 @@ module Oss
       api_get "schema", params
     end
 
-    def set_field(default = false, unique = false, name = nil, analyzer = nil, stored = true, indexed = true, termVector = nil)
+    def set_field(field_params)
       params = {
         'cmd' => 'setfield',
         'use' => @name,
-        'field.default' => default ? 'yes' : 'no',
-        'field.unique' => unique ? 'yes' : 'no',
-        'field.name' => name,
-        'field.analyzer' => analyzer,
-        'field.stored' => stored ? 'yes' : 'no',
-        'field.indexed' => indexed ? 'yes' : 'no' ,
-        'field.termVector' => termVector
+        'field.default' => field_params['default'] ? 'yes' : 'no',
+        'field.unique' => field_params['unique'] ? 'yes' : 'no',
+        'field.name' => field_params['name'],
+        'field.analyzer' => field_params['analyzer'],
+        'field.stored' => field_params['stored'] ? 'yes' : 'no',
+        'field.indexed' => field_params['indexed'] ? 'yes' : 'no' ,
+        'field.termVector' => field_params['term_vector']
       }
       api_get "schema", params
     end
