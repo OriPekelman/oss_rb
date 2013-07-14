@@ -51,17 +51,23 @@ describe Oss::Index do
     it 'set fields' do
       @index.set_field(false, true, 'id', nil, true, true, nil)
       @index.set_field(true, false, 'user', 'StandardAnalyzer', true, true, nil)
+      #FIXME nothing is tested here
+      #FIXME how do you get the list of fields from the schema?
     end
   end
 
   describe '#index docs' do
     it "create index, set fields, index docs" do
+      @index.set_field(false, true, 'id', nil, true, true, nil)
+      @index.set_field(true, false, 'user', 'StandardAnalyzer', true, true, nil)
+      
       (1..15).each do |i|
         doc = Oss::Document.new("en")
         doc.add_field('id', "#{i}")
         doc.add_field('user', "john#{i}")
         @index.add_document(doc)
       end
+      
       @index.index!
       params = {
         'start' => 0,
