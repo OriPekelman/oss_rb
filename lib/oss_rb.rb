@@ -6,7 +6,7 @@ require_relative '../vendor/nokogiri_to_hash'
 module Oss
   class Index
     attr_accessor :documents, :name, :search_result
-    def initialize(name, host = 'http://localhost:8080/oss-1.5', login = nil, key = nil)
+    def initialize(name, host = 'http://localhost:8080', login = nil, key = nil)
       @name = name
       @documents = []
       @host ||= host
@@ -14,31 +14,33 @@ module Oss
     end
 
     def list
-      response = Nokogiri::XML(api_get "#{@host}/schema", {:cmd => 'indexlist'} )
+      response = Nokogiri::XML(api_get("#{@host}/schema", {:cmd => 'indexlist'}))
       response.css('index').map{|i|i.attributes['name'].value}
     end
 
     def create(template = 'WEB_CRAWLER')
       params = {
         'cmd' => 'createindex',
-        'index.name' => @index_name,
+        'index.name' => @name,
         'index.template' => template
       }
-      api_get "#{@host}/schema", params
+      response = api_get "#{@host}/schema", params
+      xml = check_response_xml response
     end
 
     def delete!
       params = {
         'cmd' => 'deleteindex',
-        'index.name' => @index_name
+        'index.name' => @name,
       }
-      api_get "#{@host}/schema", params
+      response = api_get "#{@host}/schema", params
+      xml = check_response_xml response
     end
 
     def set_field(default = false, unique = false, name = nil, analyzer = nil, stored = true, indexed = true, termVector = nil)
       params = {
         'cmd' => 'setfield',
-        'use' => @index_name,
+        'use' => @name,
         'field.default' => default ? 'yes' : 'no',
         'field.unique' => unique ? 'yes' : 'no',
         'field.name' => name,
@@ -47,16 +49,56 @@ module Oss
         'field.indexed' => indexed ? 'yes' : 'no' ,
         'field.termVector' => termVector
       }
-      api_get "#{@host}/schema", params
+      response = api_get "#{@host}/schema", params
+      xml = check_response_xml response
     end
 
     def delete_field(name = nil)
       params = {
         'cmd' => 'deletefield',
-        'use' => @index_name,
+        'use' => @name,
         'field.name' => name,
       }
-      api_get "#{@host}/schema", params
+      response = api_get "#{@host}/schema", params
+      xml = check_response_xml response
+    end
+
+    def check_response_xml(response)
+      xml = Nokogiri::XML(response)
+      if xml == nil
+        puts response
+        raise "API reported non XML"
+      end
+      status = xml.at_xpath('/response/entry[@key=\'Status\']')
+      if !status.nil? && status.to_str != "OK"
+        exception = xml.at_xpath('/response/entry[@key=\'Exception\']/text()')
+        if status != nil
+          puts 'Status: ' + status
+        end
+        puts exception != nil ? 'Exception: ' + exception : response
+        raise "API reported Error"
+      end
+      return xml
+    end
+
+    # Delete the document matching the given primary key
+    def delete_document_by_key(key = nil)
+      params = {
+        'use' => @name,
+        'uniq' => key
+      }
+      response = api_get "#{@host}/delete", params
+      xml = check_response_xml response
+    end
+
+    # Delete the document matching the give search query
+    def delete_documents_by_query(query = nil)
+      params = {
+        'use' => @name,
+        'q' => query
+      }
+      response = api_get "#{@host}/delete", params
+      xml = check_response_xml response
     end
 
     def add_document(doc)
@@ -69,9 +111,10 @@ module Oss
 
     def index!
       params = {
-        'use' => @index_name
+        'use' => @name
       }
-      api_post "#{@host}/update", self.to_xml, params
+      response = api_post "#{@host}/update", self.to_xml, params
+      xml = check_response_xml response
     end
 
     # Populate the query string with values in an hash.
@@ -118,15 +161,9 @@ module Oss
         querystring += Index.multikey_querystring('facet', params['facet'])
         querystring += Index.multikey_querystring('facet.multi', params['facet_multi'])
       end
-      puts querystring
-      xml = Nokogiri::XML(RestClient.get("#{@host}/select?#{querystring}"))
-      err = xml.at_xpath('.//entry')
-      if !err.nil? && err.to_str=="Error"
-        puts response
-        raise "API reported Error"
-      else
-        return xml
-      end
+      response = RestClient.get("#{@host}/select?#{querystring}")
+      xml = check_response_xml response
+      return xml
     end
 
     def to_xml
@@ -155,7 +192,7 @@ module Oss
     end
 
     def api_post (method, body, params)
-      RestClient.get(method, {:accept => :xml, :content_type => :xml, :params => params.merge(@credentials)})
+      RestClient.post(method, self.to_xml, {:accept => :xml, :content_type => :xml, :params => params.merge(@credentials)})
     end
 
   end
