@@ -45,8 +45,8 @@ describe Oss::Index do
 
   describe '#create index' do
     it "create index" do
-      indexes = @index.create('WEB_CRAWLER')
-      @index.list.include? @index_name.should == @index_name
+      @index.create('WEB_CRAWLER') unless @index.list.include? @index_name
+      @index.list.should include @index_name
     end
   end
 
@@ -72,8 +72,19 @@ describe Oss::Index do
 
   describe '#index docs' do
     it "create index, set fields, index docs" do
-      @index.set_field(false, true, 'id', nil, true, true, nil)
-      @index.set_field(true, false, 'user', 'StandardAnalyzer', true, true, nil)
+      @index.set_field( {
+        'default' => true,
+        'name' => 'user',
+        'analyzer' => 'StandardAnalyzer',
+        'stored' => true,
+        'indexed' => true
+      })
+      @index.set_field( {
+        'unique' => true,
+        'name' => 'id',
+        'stored' => true,
+        'indexed' => true
+      })
       
       (1..15).each do |i|
         doc = Oss::Document.new("en")
