@@ -14,7 +14,7 @@ module Oss
     end
 
     def list
-      response = Nokogiri::XML(api_get("#{@host}/schema", {:cmd => 'indexlist'}))
+      response = Nokogiri::XML(api_get("schema", {:cmd => 'indexlist'}))
       response.css('index').map{|i|i.attributes['name'].value}
     end
 
@@ -24,7 +24,7 @@ module Oss
         'index.name' => @name,
         'index.template' => template
       }
-      response = api_get "#{@host}/schema", params
+      response = api_get "schema", params
       xml = check_response_xml response
     end
 
@@ -33,7 +33,7 @@ module Oss
         'cmd' => 'deleteindex',
         'index.name' => @name,
       }
-      response = api_get "#{@host}/schema", params
+      response = api_get "schema", params
       xml = check_response_xml response
     end
 
@@ -49,7 +49,7 @@ module Oss
         'field.indexed' => indexed ? 'yes' : 'no' ,
         'field.termVector' => termVector
       }
-      response = api_get "#{@host}/schema", params
+      response = api_get "schema", params
       xml = check_response_xml response
     end
 
@@ -59,7 +59,7 @@ module Oss
         'use' => @name,
         'field.name' => name,
       }
-      response = api_get "#{@host}/schema", params
+      response = api_get "schema", params
       xml = check_response_xml response
     end
 
@@ -87,7 +87,7 @@ module Oss
         'use' => @name,
         'uniq' => key
       }
-      response = api_get "#{@host}/delete", params
+      response = api_get "delete", params
       xml = check_response_xml response
     end
 
@@ -97,7 +97,7 @@ module Oss
         'use' => @name,
         'q' => query
       }
-      response = api_get "#{@host}/delete", params
+      response = api_get "delete", params
       xml = check_response_xml response
     end
 
@@ -113,7 +113,7 @@ module Oss
       params = {
         'use' => @name
       }
-      response = api_post "#{@host}/update", self.to_xml, params
+      response = api_post "update", self.to_xml, params
       xml = check_response_xml response
     end
 
@@ -149,7 +149,7 @@ module Oss
       querystring += Index.singlekey_querystring('key', @credentials[:key])
       querystring += Index.singlekey_querystring('query', query)
       # Evaluating the parameters given in the hash
-      if (params != nil) then
+      if !params.nil?
         querystring += Index.multikey_querystring('qt', params['query_template'])
         querystring += Index.multikey_querystring('start', params['start'])
         querystring += Index.multikey_querystring('rows', params['rows'])
@@ -161,7 +161,7 @@ module Oss
         querystring += Index.multikey_querystring('facet', params['facet'])
         querystring += Index.multikey_querystring('facet.multi', params['facet_multi'])
       end
-      response = RestClient.get("#{@host}/select?#{querystring}")
+      response = api_get "select?#{querystring}"
       xml = check_response_xml response
       return xml
     end
@@ -187,12 +187,13 @@ module Oss
 
     private
 
-    def api_get (method, params)
-      RestClient.get(method, {:params => params.merge(@credentials)})
+    def api_get (method, params={})
+      puts "#{@host}/#{method}"
+      RestClient.get("#{@host}/#{method}", {:params => params.merge(@credentials)})
     end
 
-    def api_post (method, body, params)
-      RestClient.post(method, self.to_xml, {:accept => :xml, :content_type => :xml, :params => params.merge(@credentials)})
+    def api_post (method, body, params={})
+      RestClient.post("#{@host}/#{method}", self.to_xml, {:accept => :xml, :content_type => :xml, :params => params.merge(@credentials)})
     end
 
   end
