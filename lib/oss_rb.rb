@@ -85,6 +85,10 @@ module Oss
       end
     end
 
+    def empty_documents
+      @documents = []
+    end
+    
     def index!
       params = {
         'use' => @name
