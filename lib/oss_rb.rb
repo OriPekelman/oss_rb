@@ -1,205 +1,155 @@
-require 'nokogiri'
 require 'rest_client'
-
-require_relative '../vendor/nokogiri_to_hash'
+require 'active_support/all'
 
 module Oss
   class Index
     attr_accessor :documents, :name
     def initialize(name, host = 'http://localhost:8080', login = nil, key = nil)
       @name = name
-      @documents = []
+      @documents = Array.new
       @host = host
       @credentials = {:login=>login,:key=>key}
     end
 
+    # Return the index list
+    # http://github.com/jaeksoft/opensearchserver/wiki/Index-list
     def list
-      response = api_get("schema", {:cmd => 'indexlist'})
-      response.css('index').map{|i|i.attributes['name'].value}
+      JSON.parse(api_get("services/rest/index"))["indexList"]
     end
 
+    # Create a new index with the given template name
+    # http://github.com/jaeksoft/opensearchserver/wiki/Index-create
     def create(template = 'WEB_CRAWLER')
-      params = {
-        'cmd' => 'createindex',
-        'index.name' => @name,
-        'index.template' => template
-        }
-        api_get "schema", params
+      api_post "services/rest/index/#{@name}/template/#{template}"
     end
 
+    # Delete the index
+    # http://github.com/jaeksoft/opensearchserver/wiki/Index-delete
     def delete!
-      params = {
-        'cmd' => 'deleteindex',
-        'index.name' => @name,
-        }
-      api_get "schema", params
+      api_delete "services/rest/index/#{@name}"
     end
 
+    # Create or update the field defined by the given hash
+    # http://github.com/jaeksoft/opensearchserver/wiki/Field-create-update
     def set_field(field_params)
-      params = {
-        'cmd' => 'setfield',
-        'use' => @name,
-        'field.default' => field_params['default'] ? 'yes' : 'no',
-        'field.unique' => field_params['unique'] ? 'yes' : 'no',
-        'field.name' => field_params['name'],
-        'field.analyzer' => field_params['analyzer'],
-        'field.stored' => field_params['stored'] ? 'yes' : 'no',
-        'field.indexed' => field_params['indexed'] ? 'yes' : 'no' ,
-        'field.termVector' => field_params['term_vector']
-      }
-      api_get "schema", params
+      api_put_json "services/rest/index/#{@name}/field", field_params
     end
 
-    def delete_field(name = nil)
-      params = {
-        'cmd' => 'deletefield',
-        'use' => @name,
-        'field.name' => name,
-      }
-      api_get "schema", params
+    # Set the default field and the unique field
+    # http://github.com/jaeksoft/opensearchserver/wiki/Field-set-default-unique
+    def set_field_default_unique(default, unique)
+      params = { 'unique' => unique, 'default' => default }
+      api_put "services/rest/index/#{@name}/field", '', params
     end
 
-    # Delete the document matching the given primary key
-    def delete_document_by_key(key = nil)
-      params = {
-        'use' => @name,
-        'uniq' => key
-      }
-      api_get "delete", params
+    # Delete the field matching the give name
+    # http://github.com/jaeksoft/opensearchserver/wiki/Field-delete
+    def delete_field(field_name = nil)
+      api_delete "services/rest/index/#{@name}/field/#{field_name}"
     end
 
-    # Delete the document matching the give search query
-    def delete_documents_by_query(query = nil)
-      params = {
-        'use' => @name,
-        'q' => query
-      }
-      api_get "delete", params
+    # Delete the document matching the given field and values
+    # http://github.com/jaeksoft/opensearchserver/wiki/Document-delete
+    def delete_document_by_value(field_name, *values)
+      api_delete "services/rest/index/#{@name}/document/#{field_name}/#{values.join('/')}"
     end
 
-    def add_document(doc)
-      if doc.is_a?(Array) then
-        @documents = doc
-      else
-        @documents << doc
-      end
+    # Delete the document matching the given query
+    def delete_document_by_query(query)
+      params = { 'query' => query }
+      api_delete "services/rest/index/#{@name}/document", params
     end
 
-    def empty_documents
-      @documents = []
-    end
-    
+    # Put document in the index
+    # http://github.com/jaeksoft/opensearchserver/wiki/Document-put-JSON
     def index!
-      params = {
-        'use' => @name
-      }
-      response = api_post "update", self.to_xml, params
-      xml = check_response_xml response
-    end
-    
-
-    def search(query,  params = nil)
-      query_string = flatten_params({:query=>query}.merge(params)).map{|k,v|"#{k}=#{v}"}.join "&" 
-      api_get "select?use=#{URI::encode(@name)}&#{query_string}"
+      api_put_json "services/rest/index/#{@name}/document", @documents
     end
 
-    def to_xml
-      builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
-        xml.index{
-          @documents.each do |doc|
-            xml.document(:lang => doc.lang){
-              doc.fields.map do |f|
-                xml.field(:name =>f[0]){
-                  f[1].each do |v|
-                    xml.value(v)
-                  end
-                }
-              end
-            }
-          end
-        }
-      end
-      builder.to_xml
+    # Execute a search (using pattern)
+    def search_pattern( body = nil)
+      JSON.parse(api_post_json("services/rest/index/#{@name}/search/pattern", body))
     end
-    
+
+    # Execute a search (using field)
+    # http://github.com/jaeksoft/opensearchserver/wiki/Search-field
+    def search_field(body = nil)
+      JSON.parse(api_post_json("services/rest/index/#{@name}/search/field", body))
+    end
+
+    # Execute a search based on an existing template
+    # http://github.com/jaeksoft/opensearchserver/wiki/Search-pattern
+    def search_template_pattern(template,  body = nil)
+      JSON.parse(api_post_json("services/rest/index/#{@name}/search/pattern/#{template}", body))
+    end
+
+    # Execute a search based on an existing template
+    # http://github.com/jaeksoft/opensearchserver/wiki/Search-template-field
+    def search_template_field(template,  body = nil)
+      JSON.parse(api_post_json("services/rest/index/#{@name}/search/field/#{template}", body))
+    end
+
+    # Create/update a search template (pattern search)
+    # http://github.com/jaeksoft/opensearchserver/wiki/Search-template-pattern-set
+    def search_store_template_pattern(template,  body = nil)
+      api_put_json "services/rest/index/#{@name}/search/pattern/#{template}", body
+    end
+
+    # Create/update a search template (field search)
+    # http://github.com/jaeksoft/opensearchserver/wiki/Search-template-field-set
+    def search_store_template_field(template,  body = nil)
+      api_put_json"services/rest/index/#{@name}/search/field/#{template}", body
+    end
+
+    # Delete a search template matching the given name
+    # http://github.com/jaeksoft/opensearchserver/wiki/Search-template-delete
+    def search_template_delete(template)
+      api_delete "services/rest/index/#{@name}/search/template/#{template}"
+    end
+
     private
 
     def api_get (method, params={})
-      params.merge!(@credentials) unless method.start_with? "select" #FIXME grbbl 
-      check_response_xml RestClient.get("#{@host}/#{method}", {:params => params})
+      RestClient.get("#{@host}/#{method}", {:accept => :json, :params => params})
     end
 
-    def api_post (method, body, params={})
-     check_response_xml RestClient.post("#{@host}/#{method}", self.to_xml, {:accept => :xml, :content_type => :xml, :params => params.merge(@credentials)})
-    end
-    
-    def flatten_params(params)
-      params_ary=[]
-      params.each do |k,v| 
-        if v.kind_of?(Array)
-          v.each do |vv| 
-            params_ary << [k,vv]
-          end
-        else
-          params_ary << [k,v]        
-        end
-      end
-      params_ary
+    def api_post (method, body="", params={})
+      RestClient.post("#{@host}/#{method}", body, {:params => params.merge(@credentials)})
     end
 
-
-    def check_response_xml(response)
-      xml = Nokogiri::XML(response)
-
-      if xml.nil?
-        raise Oss::ApiException.new "Failed to parse response as XML\n#{response}"
-      end
-
-      status = xml.at_xpath('/response/entry[@key=\'Status\']')
-
-      if status.nil? #FIXME Not all api calls return status
-        status = "OK" 
-      else
-        status = status.text        
-      end
-
-      if status != "OK"
-        exception = xml.at_xpath('/response/entry[@key=\'Exception\']/text()') || response
-        raise Oss::ApiException.new "API Request failed\nStatus: #{status}\n#{exception}"
-      end
-      return xml
+    def api_post_json (method, body="", params={})
+      RestClient.post("#{@host}/#{method}", body.to_json, {:accept => :json, :content_type => :json, :params => params.merge(@credentials)})
     end
-    
+
+    def api_put (method, body="", params={})
+      RestClient.put("#{@host}/#{method}", body, {:params => params.merge(@credentials)})
+    end
+
+    def api_put_json (method, body="", params={})
+      RestClient.put("#{@host}/#{method}", body.to_json, {:accept => :json, :content_type => :json, :params => params.merge(@credentials)})
+    end
+
+    def api_delete (method, params={})
+      RestClient.delete("#{@host}/#{method}", {:params => params.merge(@credentials)})
+    end
+
   end
 
-  class Document
+  class Field
+    attr_accessor :name, :value, :boost
+    def initialize(name, value, boost=1.0)
+      @name = name
+      @value = value
+      @boost =boost
+    end
+  end
 
+  class Document < Field
     attr_accessor :lang, :fields
-
-    def initialize(lang ='en')
+    def initialize(lang ='ENGLISH')
       @lang = lang
-      @fields = {}
+      @fields = Array.new
     end
-
-    def add_field(name, value)
-      if value.is_a?(Array) then
-        @fields[name] = value
-      else
-        @fields[name] ||=[]
-        @fields[name] <<  value
-      end
-    end
-
   end
 
-
-
-  class ApiException < StandardError
-    attr_reader :reason
-    
-    def initialize(reason)
-       @reason = reason
-    end
-    
-  end
 end

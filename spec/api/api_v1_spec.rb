@@ -1,12 +1,10 @@
-require 'pry'
-
 require_relative "../spec_helper"
-require "yaml"
 
 describe Oss::Index do
   before(:all) do
     @index_name = "test_oss_rb"
     @index = Oss::Index.new(@index_name, ENV['OSS_RB_URL'], ENV['OSS_RB_LOGIN'], ENV['OSS_RB_KEY'])
+    @index.delete!
   end
 
   describe '#OssIndex(name)' do
@@ -18,12 +16,6 @@ describe Oss::Index do
   describe '#Non existing methods' do
     it "should not work" do
       expect {@index.send(:api_get,"plop")}.to raise_error
-    end
-  end
-  
-  describe '#illegal url' do
-    it "should not work" do  
-      expect {@index.send(:api_get,"schema?cmd=setField&field.analyzer=StandardAnalyzer")}.to raise_error
     end
   end
 
@@ -53,56 +45,61 @@ describe Oss::Index do
   describe '#set fields' do
     it 'set fields' do
       params = {
-        'unique' => true,
         'name' => 'id',
-        'stored' => true,
-        'indexed' => true
+        'stored' => 'YES',
+        'indexed' => 'YES'
       }
       @index.set_field(params)
       params = {
-        'default' => true,
         'name' => 'user',
         'analyzer' => 'StandardAnalyzer',
-        'stored' => true,
-        'indexed' => true
+        'stored' => 'YES',
+        'indexed' => 'YES'
       }
       @index.set_field(params)
+      @index.set_field_default_unique('user', 'id')
     end
   end
 
   describe '#index docs' do
     it "create index, set fields, index docs" do
       @index.set_field( {
-        'default' => true,
         'name' => 'user',
         'analyzer' => 'StandardAnalyzer',
-        'stored' => true,
-        'indexed' => true
+        'stored' => 'YES',
+        'indexed' => 'YES'
       })
       @index.set_field( {
-        'unique' => true,
         'name' => 'id',
-        'stored' => true,
-        'indexed' => true
+        'stored' => 'YES',
+        'indexed' => 'YES'
       })
-      
+      @index.set_field_default_unique('user', 'id')
+
       (1..15).each do |i|
-        doc = Oss::Document.new("en")
-        doc.add_field('id', "#{i}")
-        doc.add_field('user', "john#{i}")
-        @index.add_document(doc)
+        doc = Oss::Document.new()
+        doc.fields << Oss::Field.new('id', "#{i}")
+        doc.fields << Oss::Field.new('user', "john#{i}")
+        @index.documents << doc
       end
-      
+
       @index.index!
       params = {
-        'query_template' => 'search',
+        'query' => 'user:j*',
         'start' => 0,
         'rows' => 10,
-        'rf' => ['id', 'user']
+        "returnedFields" => ['id', 'user']
       }
-      xml = @index.search('user:j*', params);
-      docs = xml.css('result doc')
-      docs.length.should == 10
+      result= @index.search_pattern(params);
+      result['numFound'].should == 15
+      result['documents'].length.should == 10
+
+      @index.search_store_template_pattern('patternsearch', params);
+      result = @index.search_template_pattern('patternsearch', params);
+      result['numFound'].should == 15
+      result['documents'].length.should == 10
+
+      @index.search_template_delete('search');
     end
   end
 
@@ -113,17 +110,15 @@ describe Oss::Index do
     end
   end
 
-  describe '#delete document by key' do
-    it 'index docs, delete document by key' do
-      @index.delete_document_by_key(1)
-      @index.delete_document_by_key(2)
-      @index.delete_document_by_key(3)
+  describe '#delete document by value' do
+    it 'index docs, delete document by value' do
+      @index.delete_document_by_value('id', 1, 2, 3)
     end
 
     describe '#delete document by query' do
       it 'index docs, delete document by query' do
-        @index.delete_documents_by_query('user:john4')
-        @index.delete_documents_by_query('user:john5')
+        @index.delete_document_by_query('user:john4')
+        @index.delete_document_by_query('user:john5')
       end
     end
   end
