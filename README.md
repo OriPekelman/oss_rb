@@ -17,6 +17,9 @@ And then execute:
 Or install it yourself as:
 
     $ gem install oss_rb
+    
+## Compatability
+The current master branch is only compatible with the beta version of OpenSearchServer v1.5 (dev3)
 
 ## Usage
 
