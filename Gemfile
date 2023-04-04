@@ -4,11 +4,11 @@ source 'https://rubygems.org'
 gemspec
 
 group :development do
-  gem "rake"
+  gem "rake", ">= 12.3.3"
   gem "rspec"
   gem "guard"
   gem "guard-bundler"
-  gem "guard-rack"
+  gem "guard-rack", ">= 1.4.0"
   gem 'pry'
   gem 'net-http-spy'
 end
