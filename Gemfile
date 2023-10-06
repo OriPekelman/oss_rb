@@ -7,7 +7,7 @@ group :development do
   gem "rake"
   gem "rspec"
   gem "guard"
-  gem "guard-bundler"
+  gem "guard-bundler", ">= 2.0.0"
   gem "guard-rack"
   gem 'pry'
   gem 'net-http-spy'
