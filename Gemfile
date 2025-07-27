@@ -6,9 +6,9 @@ gemspec
 group :development do
   gem "rake"
   gem "rspec"
-  gem "guard"
-  gem "guard-bundler"
-  gem "guard-rack"
+  gem "guard", ">= 1.8.2"
+  gem "guard-bundler", ">= 2.0.0"
+  gem "guard-rack", ">= 1.4.0"
   gem 'pry'
   gem 'net-http-spy'
 end
